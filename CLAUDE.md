@@ -9,8 +9,9 @@ Task 3 RAG project (purpose to be defined in `specs/`). Same infra as task-1: Ne
 4. Unresolved decisions: ask the user with options and a recommendation, one question at a time (the user is learning RAG, so explain tradeoffs).
 
 ## Dev
-- DB: `docker compose --env-file .env.local up -d db` (host port `DB_PORT`, default 5433); app: `npm run dev` on the host.
-- Full stack: `docker compose --env-file .env.local up -d --build` (app on `APP_PORT`, default 3001).
+- DB: `docker compose --env-file .env.local up -d db` (host port `DB_PORT`, default 5432); app: `npm run dev` on the host.
+- Only one of task-1 / task-3 can run on the default ports at a time (stop one with `docker compose --env-file .env.local down`, or override `DB_PORT` / `APP_PORT`).
+- Full stack: `docker compose --env-file .env.local up -d --build` (app on `APP_PORT`, default 3000).
 - Env lives in `.env.local` (git-ignored; `.env.example` is the template). Compose reads `.env`, so pass `--env-file`.
 - Schema changes go through Drizzle migrations (`npm run db:generate`, `npm run db:migrate`), not edits to `db/init.sql` (that only enables the `vector` extension).
 - Scripts run on the host with `tsx` (`.mts` files, since the package is CommonJS); the production image carries no dev tooling.
