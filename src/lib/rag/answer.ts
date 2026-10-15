@@ -24,19 +24,42 @@ export async function retrieve(question: string, topK = TOP_K, retry?: RetryOpti
     .limit(topK);
 }
 
-export async function generateAnswer(question: string, hits: Hit[]): Promise<string> {
+// Same model, prompt and temperature for the one-shot and streaming paths.
+function generationRequest(question: string, hits: Hit[]) {
   const excerpts = hits.map((h) => `[page ${h.page}]\n${h.content}`).join("\n\n");
-  const res = await withRetry(() =>
-    ai.models.generateContent({
-      model: CHAT_MODEL,
-      contents: `Excerpts:\n${excerpts}\n\nQuestion: ${question}`,
-      config: { systemInstruction: SYSTEM_PROMPT, temperature: 0 },
-    }),
-  );
+  return {
+    model: CHAT_MODEL,
+    contents: `Excerpts:\n${excerpts}\n\nQuestion: ${question}`,
+    config: { systemInstruction: SYSTEM_PROMPT, temperature: 0 },
+  };
+}
+
+export async function generateAnswer(question: string, hits: Hit[]): Promise<string> {
+  const res = await withRetry(() => ai.models.generateContent(generationRequest(question, hits)));
   return (res.text ?? "").trim();
 }
 
 export async function answerQuestion(question: string): Promise<Answer> {
   const hits = await retrieve(question);
   return { answer: await generateAnswer(question, hits), hits };
+}
+
+export type AnswerStream = { hits: Hit[]; text: AsyncGenerator<string, void> };
+
+// Interactive requests: ~3 quick attempts, and give up fast if Google asks for a long wait.
+const WEB_RETRY: RetryOptions = { maxAttempts: 3, maxServerWaitMs: 15_000 };
+
+// Retrieval runs first so callers can show sources (or fail cleanly) before any generation starts.
+// The model request is only sent once `text` is iterated; withRetry covers opening the stream.
+export async function streamAnswer(question: string): Promise<AnswerStream> {
+  const hits = await retrieve(question, TOP_K, WEB_RETRY);
+  return { hits, text: streamText(question, hits) };
+}
+
+async function* streamText(question: string, hits: Hit[]): AsyncGenerator<string, void> {
+  const stream = await withRetry(() => ai.models.generateContentStream(generationRequest(question, hits)), WEB_RETRY);
+  for await (const chunk of stream) {
+    const text = chunk.text;
+    if (text) yield text;
+  }
 }

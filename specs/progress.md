@@ -31,3 +31,10 @@
 - Offline checks pass; `npx tsc --noEmit` clean. One live vision call (page 2) worked and is cached; page 10 hit the daily quota (retryDelay ~1092 min). Pages 10/12 real transcripts still pending.
 - Fixture dry run (hand-written p2/p10/p12 markdown): page hit 10/10, value hit 9/10 (g02 misses only because of Markdown pipes in the check string). Not real vision results. DB restored to plain-text baseline.
 - Next: after quota reset run `npm run ingest`, then `npm run eval -- --retrieval-only`; normalise Markdown pipes in the eval value check.
+
+## 2026-10-15 (Phase 5, answer API + chat UI)
+- Ported from task-1: `src/app/api/ask/route.ts`, `src/lib/{ask-protocol,ask-client,highlight,citations,refusal,history,use-media-query}.ts`, `src/components/{workspace.tsx,workspace.css,composer,answer,evidence,history-rail}`, `globals.css`, `layout.tsx`, `page.tsx` (server shell reading `config.ts`, client island `Workspace`). `ui/button` and env/utils were already identical.
+- `streamAnswer` added to `src/lib/rag/answer.ts`; prompt/config shared with `generateAnswer` via `generationRequest` (wording unchanged, eval unaffected).
+- Adaptations: iMac wording/titles, the 3 acceptance questions as examples, out-of-scope example (battery life), history key `imac-ask:history:v1`, `AskSource.kind` + kind chip on evidence cards, table chunks rendered monospace/pre-wrap (no new deps).
+- Verified: `tsc --noEmit`, `npm run lint`, `npm run build` (standalone) clean; no server deps found in `.next/static`; dev server: GET / 200, empty body 400, valid question streamed `sources` (with kind) then `error` code `quota`.
+- Blocked by chat quota: a real streamed answer, citation chips/highlights on a live answer, refusal state live. No browser/screenshot tool used, so no visual verification.
