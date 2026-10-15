@@ -38,3 +38,15 @@
 - Adaptations: iMac wording/titles, the 3 acceptance questions as examples, out-of-scope example (battery life), history key `imac-ask:history:v1`, `AskSource.kind` + kind chip on evidence cards, table chunks rendered monospace/pre-wrap (no new deps).
 - Verified: `tsc --noEmit`, `npm run lint`, `npm run build` (standalone) clean; no server deps found in `.next/static`; dev server: GET / 200, empty body 400, valid question streamed `sources` (with kind) then `error` code `quota`.
 - Blocked by chat quota: a real streamed answer, citation chips/highlights on a live answer, refusal state live. No browser/screenshot tool used, so no visual verification.
+
+## 2026-10-15 (Phase 6 groundwork, no-quota parts)
+- README rewritten for task-3 (pipelines, setup, commands from package.json, compose run, ports caveat, quotas, status).
+- Docker full stack: `docker compose --env-file .env.local up -d --build` built without Dockerfile/compose changes (image 335 MB; runner node_modules hold only next, react, sharp and their runtime deps; no `data/`, no tsx/drizzle-kit). db was already running and was left running; only the app container was started, checked and removed.
+- Verified: GET / 200, `POST /api/ask` with `{}` 400, one valid question streamed `sources` then a real answer (346 kg two-port 256GB, 391 kg four-port 512GB) then `done` (chat quota appears available again). Memory: app 57 MiB / 256 MiB, db 30 MiB / 384 MiB; 0 restarts, no OOM.
+- `npm audit`: 13 findings (4 moderate, 9 high), all in dev/build tooling (shadcn CLI chain, drizzle-kit/esbuild-kit, eslint-config-next). None in the production image (checked its node_modules). Only fixes offered are major downgrades; `--force` not run.
+- Still pending: real vision ingest of pages 10 and 12, full eval, golden-set review, browser check of the UI.
+
+## 2026-10-15 (real vision ingest)
+- Real vision ingest done (pages 2, 10, 12 cached), 85 chunks stored, DB now on vision-v1. Retrieval-only eval 10/10 page and value hit (same as baseline). See D-21.
+- Full eval blocked: chat quota exhausted again (429, ~999 min). Next: after reset, `npm run eval -- --json` for correctness/refusal, compare with the plain-text baseline (`npm run ingest -- --pipeline plain --force` then eval), review golden set, check 3 exam questions in the browser.
+- Uncommitted: README, Phase 6 notes, D-20/D-21.
