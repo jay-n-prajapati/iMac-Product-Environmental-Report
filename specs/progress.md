@@ -24,3 +24,10 @@
 - `evals/golden.json` (12 items: 3 acceptance, 7 chart/table/callout/footnote incl. the 346 kg conflict and copper footnote traps, 2 refusals), values re-verified against the PDF (text + page images of p2/p10/p12). Draft awaiting user review: `specs/imac-qa/eval-review.md`.
 - `scripts/eval.mts` ported from task-1 (`npm run eval`; flags `--ids`, `--json`, `--retrieval-only`); adds element kind per item, page hit vs stricter value hit (one chunk holds all expected strings) and value rank.
 - Baseline plain-text-v1, retrieval only (chat not called): page hit 10/10, value hit 10/10. Retrieval is not the weak point; the risks are column/header mixups at answer time (p10, p12) and refusal behaviour, to be measured with the full eval when chat quota returns.
+
+## 2026-10-15 (Phase 4, vision ingestion)
+- Built pipeline `vision-v1`: `src/lib/rag/{pages,vision,elements}.ts`, `scripts/ingest.mts --pipeline plain|vision [--fixture] [--force]`, `scripts/check-vision.mts` (`npm run check:vision`), `scripts/vision-page.mts`. Details and heuristic table in `specs/imac-qa/vision-ingestion.md`.
+- Heuristic (standalone "number + unit" text items at body size, >= 3) flags exactly pages 2, 10, 12; image count and path-op counts rejected.
+- Offline checks pass; `npx tsc --noEmit` clean. One live vision call (page 2) worked and is cached; page 10 hit the daily quota (retryDelay ~1092 min). Pages 10/12 real transcripts still pending.
+- Fixture dry run (hand-written p2/p10/p12 markdown): page hit 10/10, value hit 9/10 (g02 misses only because of Markdown pipes in the check string). Not real vision results. DB restored to plain-text baseline.
+- Next: after quota reset run `npm run ingest`, then `npm run eval -- --retrieval-only`; normalise Markdown pipes in the eval value check.

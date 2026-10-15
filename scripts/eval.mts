@@ -23,9 +23,10 @@ const saveJson = args.includes("--json");
 const retrievalOnly = args.includes("--retrieval-only");
 const DELAY_MS = 1500; // gentle pacing for the free tier; withRetry handles the rest
 
-// Case, whitespace and thousands separators don't matter ("802,834" == "802834").
+// Case, whitespace, thousands separators and Markdown table pipes don't matter
+// ("802,834" == "802834", "| Production | 50% |" == "Production 50%").
 const norm = (s: string) =>
-  s.toLowerCase().replace(/(?<=\d),(?=\d)/g, "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim();
+  s.toLowerCase().replace(/(?<=\d),(?=\d)/g, "").replace(/[’‘]/g, "'").replace(/\|/g, " ").replace(/\s+/g, " ").trim();
 
 // Numbers in the answer (page citations excluded) that appear in none of the retrieved chunks.
 function unsupportedNumbers(answer: string, chunkTexts: string[]): string[] {
