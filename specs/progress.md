@@ -13,3 +13,9 @@
 - Visual pages are exactly 2, 10, 12 (vector chart/tables, 0 raster images). Image count is the wrong heuristic signal (decorative photos on 1, 4, 6, 8). Heuristic for D-06 must use vector drawing count / numeric-token density; to be tested in Phase 4.
 - PDF inconsistency: p2 footnote 10 says 346 kg is for 512GB, p10 and p2 text say 256GB (512GB four ports is 391 kg). Golden set follows the p10 table.
 - Gemini not called (chat quota exhausted).
+
+## 2026-10-15 (Phase 2, plain-text baseline)
+- Schema (`documents`, `chunks` with `kind`, vector(768), HNSW cosine + document_id index) + migration `drizzle/0000_*` applied.
+- `scripts/ingest.mts` (`npm run ingest`): unpdf per page -> 900/135 fixed char chunks -> embeddings -> transactional replace, hash+config skip. 12 pages -> 37 chunks.
+- `scripts/ask.mts` (`npm run ask -- "<q>" [--answer]`): retrieval only by default (chat quota exhausted, chat not called).
+- Baseline results in `specs/imac-qa/baseline-plain-text.md`: (a) hit, (c) hit, (b) weak hit (p10 table chunks at rank 2-3, scrambled order with the 391 kg block, p9 glossary ranks first). Expect real failures on chart/table golden questions in Phase 3.
