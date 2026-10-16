@@ -50,3 +50,12 @@
 - Real vision ingest done (pages 2, 10, 12 cached), 85 chunks stored, DB now on vision-v1. Retrieval-only eval 10/10 page and value hit (same as baseline). See D-21.
 - Full eval blocked: chat quota exhausted again (429, ~999 min). Next: after reset, `npm run eval -- --json` for correctness/refusal, compare with the plain-text baseline (`npm run ingest -- --pipeline plain --force` then eval), review golden set, check 3 exam questions in the browser.
 - Uncommitted: README, Phase 6 notes, D-20/D-21.
+
+## 2026-10-16 (budgeted eval attempt)
+- Ran the 10-item budgeted eval on vision-v1 (DB confirmed 85 chunks, no chat). Chat call 1 succeeded, call 2 hit 429 (daily limit 20 already spent); stopped as planned. 2 chat calls used, 0 recorded results (g01 answer lost because eval.mts only saves JSON at the end). See `specs/imac-qa/eval-review.md`.
+- Added opt-in `EVAL_CHAT_BUDGET=1` to `generateAnswer` in `src/lib/rag/answer.ts` (5xx retried once, 429 never, logs call count); default behaviour unchanged. Uncommitted.
+- Next after quota reset: save results incrementally in eval.mts, then rerun the 10 items.
+
+## 2026-10-16 (full eval)
+- Budgeted full eval on vision-v1 passed: 8/8 correct, 2/2 refusals, 10 chat calls on gemini-3.6-flash (D-23). Eval hardened (call cap, incremental save, pacing).
+- Not done: g08/g09, plain-text chat baseline, browser check of the 3 exam questions, golden-set review by the user.

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { client } from "../src/lib/db";
 import { answerQuestion, REFUSAL, retrieve } from "../src/lib/rag/answer";
 
@@ -21,7 +21,11 @@ const wantIds = idsValue ? new Set(idsValue.split(",").filter(Boolean)) : null;
 const saveJson = args.includes("--json");
 // Embeddings only, no chat call: checks retrieval without spending the (small) free-tier chat quota.
 const retrievalOnly = args.includes("--retrieval-only");
-const DELAY_MS = 1500; // gentle pacing for the free tier; withRetry handles the rest
+// Chat runs wait ~13 s between questions (free tier: 5 requests/minute per model); retrieval-only needs far less.
+const DELAY_MS = retrievalOnly ? 1500 : 13_000;
+// Hard cap on chat calls per run, so a long ids list can never burn the daily quota (override with --max-calls N).
+const maxCallsFlag = args.findIndex((a) => a === "--max-calls");
+const MAX_CHAT_CALLS = maxCallsFlag === -1 ? 10 : Number(args[maxCallsFlag + 1]);
 
 // Case, whitespace, thousands separators and Markdown table pipes don't matter
 // ("802,834" == "802834", "| Production | 50% |" == "Production 50%").
@@ -59,11 +63,28 @@ type Result = {
 };
 const results: Result[] = [];
 
+if (!retrievalOnly && items.length > MAX_CHAT_CALLS) {
+  console.error(`Refusing to run: ${items.length} chat calls exceeds --max-calls ${MAX_CHAT_CALLS}. Use --ids to pick fewer.`);
+  process.exit(2);
+}
+await mkdir("data/extracted", { recursive: true });
+const partialPath = "data/extracted/eval-partial.jsonl";
+if (!retrievalOnly) await writeFile(partialPath, "");
+let stopped: string | null = null;
+
 for (const [i, item] of items.entries()) {
   if (i > 0) await new Promise((r) => setTimeout(r, DELAY_MS));
-  const { answer, hits } = retrievalOnly
-    ? { answer: "", hits: await retrieve(item.question) }
-    : await answerQuestion(item.question);
+  let answer: string;
+  let hits: Awaited<ReturnType<typeof retrieve>>;
+  try {
+    ({ answer, hits } = retrievalOnly
+      ? { answer: "", hits: await retrieve(item.question) }
+      : await answerQuestion(item.question));
+  } catch (err) {
+    // Typically a 429: stop at once (no retry loop) and keep everything answered so far.
+    stopped = `${item.id}: ${String((err as Error).message).slice(0, 200)}`;
+    break;
+  }
   const pages = hits.map((h) => h.page);
   const oos = item.type === "out-of-scope";
   const need = item.valueStrings ?? item.expectedAnswerContains;
@@ -85,7 +106,10 @@ for (const [i, item] of items.entries()) {
     pages,
     topScore: hits[0]?.score ?? 0,
   });
+  // Written as each item completes, so a later quota stop never loses an answer already paid for.
+  if (!retrievalOnly) await appendFile(partialPath, JSON.stringify(results[results.length - 1]) + "\n");
 }
+if (stopped) console.error(`\nSTOPPED EARLY after ${results.length}/${items.length} item(s): ${stopped}`);
 
 function isCorrect(item: Item, answer: string): boolean {
   const a = norm(answer);
@@ -143,4 +167,4 @@ if (saveJson) {
 }
 
 await client.end();
-process.exit(failures.length ? 1 : 0);
+process.exit(failures.length || stopped ? 1 : 0);
